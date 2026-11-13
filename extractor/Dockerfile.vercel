@@ -1,6 +1,11 @@
 FROM ghcr.io/imputnet/cobalt:11
 
-# Vercel container functions route HTTP traffic to port 80.
 ENV API_PORT=80
 ENV API_LISTEN_ADDRESS=0.0.0.0
+ENV API_AUTH_REQUIRED=1
+ENV API_KEY_URL=file:///app/keys.json
 ENV CORS_WILDCARD=0
+
+COPY --chown=node:node start.sh /app/start.sh
+ENTRYPOINT ["sh", "/app/start.sh"]
+CMD ["node", "src/cobalt"]
