@@ -9,7 +9,8 @@ const json = (body: unknown, status = 200) => NextResponse.json(body, { status, 
 
 function authorized(req: NextRequest): boolean {
   const expected = process.env.API_TOKEN;
-  const supplied = req.headers.get("authorization")?.replace(/^Bearer\\s+/i, "") ?? "";
+  const authHeader = req.headers.get("authorization") ?? "";
+  const supplied = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7).trim() : "";
   if (!expected || !supplied || supplied.length !== expected.length) return false;
   let mismatch = 0;
   for (let i = 0; i < expected.length; i++) mismatch |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
@@ -45,11 +46,11 @@ export async function POST(req: NextRequest) {
     if (!data) return json({ error: "invalid_extractor_response" }, 502);
     if (data.status === "error") return json({ error: "media_unavailable", detail: data.error?.code ?? data.text ?? "The source could not be processed." }, 422);
     if (data.status === "picker" && Array.isArray(data.picker)) {
-      const items = data.picker.filter((x: any) => typeof x?.url === "string" && /^https:\\/\\//i.test(x.url)).map((x: any, i: number) => ({ label: x.type === "photo" ? `Image ${i + 1}` : `Media ${i + 1}`, url: x.url, type: x.type ?? "media", thumbnail: x.thumb ?? null }));
+      const items = data.picker.filter((x: any) => typeof x?.url === "string" && x.url.startsWith("https://")).map((x: any, i: number) => ({ label: x.type === "photo" ? `Image ${i + 1}` : `Media ${i + 1}`, url: x.url, type: x.type ?? "media", thumbnail: x.thumb ?? null }));
       return json({ status: "picker", title: data.filename ?? "media", items });
     }
     const resultUrl = typeof data.url === "string" ? data.url : null;
-    if (!resultUrl || !/^https:\\/\\//i.test(resultUrl)) return json({ error: "no_download_url", detail: "Extractor did not return a secure HTTPS media URL." }, 502);
+    if (!resultUrl || !resultUrl.startsWith("https://")) return json({ error: "no_download_url", detail: "Extractor did not return a secure HTTPS media URL." }, 502);
     return json({ status: "ready", title: data.filename ?? "media", mode, quality: mode === "video" ? quality : undefined, downloadUrl: resultUrl, expires: data.expires ?? null });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown upstream error";
