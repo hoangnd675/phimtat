@@ -12,3 +12,6 @@ At startup, `start.sh` writes the Cobalt key database to `/app/keys.json` with r
 Cobalt API authentication is mandatory (`API_AUTH_REQUIRED=1`). The gateway sends `Authorization: Api-Key <COBALT_API_KEY>`.
 
 The Cobalt service must be deployed at its stable project domain because Cobalt uses `API_URL` to create temporary download tunnel URLs.
+
+
+Vercel project settings: framework `container`, root directory `extractor`, runtime port `9000`.
