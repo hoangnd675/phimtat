@@ -1,22 +1,32 @@
 # Universal Media Downloader
 
-Private iOS Share Sheet downloader backed by a Next.js API gateway and a private Cobalt processing service on Vercel Services.
+A private iOS Share Sheet downloader built from a Next.js API gateway and a self-hosted Cobalt extractor.
 
 ## Features
-- Share Sheet / clipboard URL input (implemented in the iOS Shortcut).
-- Video quality selection: 2160p, 1440p, 1080p, 720p, 480p, 360p.
-- YouTube audio extraction to MP3 (320 kbps requested from Cobalt).
+- Share Sheet and clipboard URL intake.
+- Video quality presets: 2160p, 1440p, 1080p, 720p, 480p, 360p.
+- YouTube audio extraction to MP3 at 320 kbps (when the source provides it).
 - Multi-image/media picker responses.
-- Save to Photos or Files from the iOS Shortcut.
-- Private resolver endpoint protected by a bearer token.
-- Cobalt extractor is an internal Vercel Service; only short-lived `/api/cobalt/tunnel` downloads are publicly routed.
+- Shortcut save flow for Photos or Files.
+- Private resolver API protected by a bearer token.
+- Separate Cobalt container protected by its own API key.
 
-## Vercel environment
-- `API_TOKEN`: secret bearer token for the Shortcut.
-- `API_URL`: public tunnel base URL, e.g. `https://universal-media-downloader-hoangnd675.vercel.app/api/cobalt/`.
-- `COBALT_API_KEY`: optional if the internal Cobalt service is configured with API-key authentication. The default service binding is private.
+## Vercel projects
+- Gateway: `universal-media-downloader-private` (Next.js, GitHub-linked).
+- Extractor: `universal-media-downloader-extractor` (Cobalt container, repository root directory `extractor`).
 
-The extractor is deployed from `extractor/Dockerfile.vercel` using the official `ghcr.io/imputnet/cobalt:11` image. The app calls it through the private `COBALT_INTERNAL_URL` service binding. The public proxy only permits the Cobalt `tunnel` endpoint, so the processing API itself is not exposed.
+## Environment variables
+
+Gateway project:
+- `API_TOKEN`: secret bearer token used by the iOS Shortcut.
+- `COBALT_API_URL`: public base URL of the dedicated extractor project.
+- `COBALT_API_KEY`: secret UUIDv4 API key shared with the extractor.
+
+Extractor project:
+- `API_URL`: its public base URL, including trailing slash.
+- `COBALT_API_KEY`: same UUIDv4 key as the gateway.
+
+The extractor generates its `keys.json` file at container startup from the secret environment variable. No API key is committed to the repository. The extractor requires API-key authentication.
 
 ## API
 `POST /api/resolve` with `Authorization: Bearer <API_TOKEN>` and JSON:
@@ -26,20 +36,15 @@ The extractor is deployed from `extractor/Dockerfile.vercel` using the official 
 
 The response is either `{"status":"ready","downloadUrl":"https://..."}` or `{"status":"picker","items":[...]}`.
 
-## iOS Shortcut
-1. Accept URL input from Share Sheet; otherwise use Clipboard.
+## Shortcut flow
+1. Receive URL from Share Sheet; if empty, read Clipboard.
 2. Ask for Video / Audio / Images.
 3. Ask for quality when Video is selected.
-4. POST to `/api/resolve` with the bearer token.
-5. If `status=picker`, ask which item to download; otherwise use `downloadUrl`.
+4. POST to the gateway `/api/resolve` with the bearer token.
+5. If the response is `picker`, choose one item; otherwise use `downloadUrl`.
 6. Ask save destination: Photos or Files; save MP3 to Files.
 
 ## Notes
-- Source availability varies. Some links may require login or be blocked by platform restrictions.
-- Do not use this tool to bypass DRM or access private content without authorization.
-- iCloud Shortcut sharing requires exporting the shortcut from Apple Shortcuts on an Apple device; the backend cannot create an iCloud share URL on its own.
-
-
-## Deployment
-
-Production Vercel project: `universal-media-downloader-private` (GitHub-linked deployment). Keep `API_TOKEN` and other credentials in Vercel Environment Variables only; never commit them.
+- Source availability varies; login-only, private, DRM-protected, region-restricted, or removed content may not be available.
+- Respect copyright and platform terms.
+- An iCloud Shortcut share link must be exported from Apple Shortcuts on an Apple device. The server cannot create an iCloud share URL on its own.
