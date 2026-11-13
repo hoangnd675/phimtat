@@ -38,3 +38,8 @@ The response is either `{"status":"ready","downloadUrl":"https://..."}` or `{"st
 - Source availability varies. Some links may require login or be blocked by platform restrictions.
 - Do not use this tool to bypass DRM or access private content without authorization.
 - iCloud Shortcut sharing requires exporting the shortcut from Apple Shortcuts on an Apple device; the backend cannot create an iCloud share URL on its own.
+
+
+## Deployment
+
+Production Vercel project: `universal-media-downloader-private` (GitHub-linked deployment). Keep `API_TOKEN` and other credentials in Vercel Environment Variables only; never commit them.
