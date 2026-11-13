@@ -1,4 +1,4 @@
-Tiêu đề: Yêu cầu tạo Phím tắt iOS (Apple Shortcut) - "Snap Video"
+Tiêu đề: Yêu cầu tạo Phím tắt iOS (Apple Shortcut) - "Dowloader"
 Mô tả tổng quan:
 Mình cần tạo một Phím tắt iOS để tải video/phương tiện từ các nền tảng mạng xã hội. Phím tắt này không tự bóc tách dữ liệu mà hoạt động như một "cầu nối": Nhận URL từ người dùng, mã hóa, gửi lên một API server (api.phimtat.vn) để lấy link tải trực tiếp (JSON), sau đó hiển thị menu cho người dùng chọn độ phân giải và tiến hành tải về máy.
 Luồng logic chi tiết (Step-by-Step):
