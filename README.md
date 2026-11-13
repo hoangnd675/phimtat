@@ -1,68 +1,40 @@
-# Universal Media Downloader API
+# Universal Media Downloader
 
-Private API backend for an iOS Share Sheet shortcut. This project is a resolver/proxy layer; it does not scrape social platforms itself. Media extraction is delegated to a self-hosted Cobalt-compatible service.
+Private iOS Share Sheet downloader backed by a Next.js API gateway and a private Cobalt processing service on Vercel Services.
 
 ## Features
-- POST `/api/resolve`: resolve a supported media URL to a secure HTTPS download URL.
-- Video quality presets: 2160p, 1440p, 1080p, 720p, 480p, 360p.
-- Audio mode: requests MP3 at 192 kbps from the extractor.
-- Picker responses: normalizes multi-item photo/media responses.
-- Bearer-token authentication and no-store responses.
-- GET `/api/health`: deployment/configuration status (does not expose secrets).
+- Share Sheet / clipboard URL input (implemented in the iOS Shortcut).
+- Video quality selection: 2160p, 1440p, 1080p, 720p, 480p, 360p.
+- YouTube audio extraction to MP3 (320 kbps requested from Cobalt).
+- Multi-image/media picker responses.
+- Save to Photos or Files from the iOS Shortcut.
+- Private resolver endpoint protected by a bearer token.
+- Cobalt extractor is an internal Vercel Service; only short-lived `/api/cobalt/tunnel` downloads are publicly routed.
 
-## Required environment variables
-- `API_TOKEN`: long random secret used by the iOS Shortcut as `Authorization: Bearer <token>`.
-- `COBALT_API_URL`: URL of your own Cobalt-compatible API endpoint (for example, a self-hosted instance endpoint). Do not use an untrusted public instance for private media.
-- `COBALT_API_KEY`: optional upstream API key, sent as `Authorization: Api-Key ...`.
+## Vercel environment
+- `API_TOKEN`: secret bearer token for the Shortcut.
+- `API_URL`: public tunnel base URL, e.g. `https://universal-media-downloader-hoangnd675.vercel.app/api/cobalt/`.
+- `COBALT_API_KEY`: optional if the internal Cobalt service is configured with API-key authentication. The default service binding is private.
 
-Do not commit secrets to GitHub. Configure them in Vercel Project → Settings → Environment Variables, then redeploy.
+The extractor is deployed from `extractor/Dockerfile.vercel` using the official `ghcr.io/imputnet/cobalt:11` image. The app calls it through the private `COBALT_INTERNAL_URL` service binding. The public proxy only permits the Cobalt `tunnel` endpoint, so the processing API itself is not exposed.
 
 ## API
+`POST /api/resolve` with `Authorization: Bearer <API_TOKEN>` and JSON:
+- Video: `{"url":"https://...","mode":"video","quality":"1080"}`
+- Audio: `{"url":"https://youtube.com/watch?v=...","mode":"audio"}`
+- Images: `{"url":"https://...","mode":"image"}`
 
-`POST /api/resolve`
+The response is either `{"status":"ready","downloadUrl":"https://..."}` or `{"status":"picker","items":[...]}`.
 
-Headers:
-```
-Authorization: Bearer YOUR_API_TOKEN
-Content-Type: application/json
-```
+## iOS Shortcut
+1. Accept URL input from Share Sheet; otherwise use Clipboard.
+2. Ask for Video / Audio / Images.
+3. Ask for quality when Video is selected.
+4. POST to `/api/resolve` with the bearer token.
+5. If `status=picker`, ask which item to download; otherwise use `downloadUrl`.
+6. Ask save destination: Photos or Files; save MP3 to Files.
 
-Video:
-```json
-{ "url": "https://example.com/video", "mode": "video", "quality": "1080" }
-```
-
-YouTube audio:
-```json
-{ "url": "https://www.youtube.com/watch?v=...", "mode": "audio" }
-```
-
-Image/multi-item:
-```json
-{ "url": "https://example.com/post", "mode": "image" }
-```
-
-Successful single-item response:
-```json
-{ "status": "ready", "title": "media", "mode": "video", "quality": "1080", "downloadUrl": "https://..." }
-```
-
-Multi-item response:
-```json
-{ "status": "picker", "title": "media", "items": [{ "label": "Image 1", "url": "https://...", "type": "photo" }] }
-```
-
-## iOS Shortcut flow
-1. Accept URLs from Share Sheet; if input is empty, get Clipboard.
-2. Ask for mode: Video / Audio / Images.
-3. Ask for quality for video.
-4. Get Contents of URL → POST `https://YOUR-DEPLOYMENT/api/resolve` with the JSON body above and Bearer token header.
-5. If `status=picker`, choose an item; otherwise use `downloadUrl`.
-6. Ask where to save: Photos or Files. Use Save to Photo Album for image/video; Save File for audio/other files.
-7. For YouTube audio, save the returned MP3 to Files.
-
-## Important limitations
-- The extractor must be deployed and configured separately. Vercel hosts the private API gateway, not the media extraction engine.
-- Source sites can change their protections at any time. Some content may require public access or be unavailable due to region, login, DRM, age restrictions, or platform terms.
-- Respect copyright, privacy, and each platform's terms. This tool is not intended to bypass DRM or access private content.
-- An iCloud Shortcut share link can only be created by exporting the shortcut from Apple Shortcuts on an Apple device. This repository provides the API and implementation contract; it cannot mint an iCloud link on your behalf.
+## Notes
+- Source availability varies. Some links may require login or be blocked by platform restrictions.
+- Do not use this tool to bypass DRM or access private content without authorization.
+- iCloud Shortcut sharing requires exporting the shortcut from Apple Shortcuts on an Apple device; the backend cannot create an iCloud share URL on its own.
